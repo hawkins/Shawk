@@ -4,7 +4,7 @@ Shawk - Free SMS with Python using SMTP
 A python `smtplib` wrapper to send SMS messages through SMS gateways with a Gmail login.
 
 # Instalation
-Shawk will soon be available on PyPi.
+Shawk is available on PyPi as such:
 ```
 pip install shawk
 ```
