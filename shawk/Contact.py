@@ -99,6 +99,7 @@ shawkGateways = {
     'PCS One': 'pcsone.net',
     'Pondicherry BPL Mobile': 'bplmobile.com',
     'Primtel': 'sms.primtel.ru',
+    'Project Fi': 'msg.fi.google.com',
     'Public Service Cellular': 'sms.pscel.com',
     'Qwest': 'qwestmp.com',
     'Rogers AT&T Wireless': 'pcs.rogers.com',
