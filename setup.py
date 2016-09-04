@@ -10,4 +10,7 @@ setup(
     download_url = 'https://github.com/hawkins/shawk/tarball/0.1',
     keywords = ['sms', 'smtp', 'hawkins', 'simple'], # arbitrary keywords
     classifiers = [],
+    install_requires=[
+        'imapclient==0.13',
+    ],
 )

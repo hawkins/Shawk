@@ -1,5 +1,7 @@
 from shawk.Contact import Contact
 import smtplib
+import imapclient # Version 0.13
+import email
 
 class Client():
     def __init__(self, user, pwd):
@@ -49,13 +51,81 @@ class Client():
                     number = each.number
                     break
 
+        # Delete the object from contacts
         del self.contacts[str(number)]
 
-    def send(self, message, name=None, number=None, carrier=None):
-        if not name and not number:
-            raise Exception("No name or number provided")
+    def getContact(self, message):
+        # Return contact that matches the message's sender
+        for _, contact in self.contacts.items():
+            if contact.getAddress() == message['FROM']:
+                return contact
+        return None
+
+    def getContactFromAddress(self, address):
+        # Return contact that matches an address
+        for _, contact in self.contacts.items():
+            if contact.getAddress() == address:
+                return contact
+        return None
+
+    def setupInbox(self, password, folder='inbox', user=None, refresh=False):
+        # Apply user if not provided
+        if not user:
+            user = self.__user
+
+        # Connect IMAP server
+        self.imap_server = imapclient.IMAPClient('imap.gmail.com', ssl=True)
+        self.imap_server.login(user, password)
+        self.imap_server.select_folder('INBOX', readonly=True)
+
+        # Refresh if requested
+        if refresh:
+            self.refreshInbox()
+
+    def refreshInbox(self):
+        # Get raw messages from imap_server
+        UIDs = self.imap_server.search('ALL')
+        rawMessages = self.imap_server.fetch(UIDs, ['BODY[TEXT]', 'BODY[HEADER.FIELDS (FROM)]'])
+
+        # Convert messages to string format and simplify structure
+        messages = []
+        for uid in rawMessages:
+            obj = {}
+            obj['UID'] = uid
+            for key, value in rawMessages[uid].items():
+                try:
+                    if key.decode('utf-8') == 'BODY[HEADER.FIELDS (FROM)]':
+                        obj['FROM'] = email.utils.parseaddr(value.decode('utf-8'))[1]
+                    else:
+                        if key.decode('utf-8') == 'BODY[TEXT]':
+                            obj['BODY'] = value.decode('utf-8')
+                        else:
+                            obj[key.decode('utf-8')] = value.decode('utf-8')
+                except AttributeError as e:
+                    obj[key.decode('utf-8')] = value
+            messages.append(obj)
+
+        # Find sms messages in messages
+        # TODO: Look for sender matching a Contact's address
+        texts = []
+        for msg in messages:
+            content = msg['BODY']
+            if len(content) < 140:
+                texts.append(msg)
+
+        # Update inbox in place and return it as well
+        self.inbox = texts
+        return texts
+
+    def send(self, message, contact=None, number=None, name=None, carrier=None):
+        if not contact and not name and not number:
+            raise Exception("No contact information provided")
 
         address = None
+
+        # Find address from contact
+        if contact:
+            address = contact.getAddress()
 
         # Find address if given number
         if number:

@@ -1,3 +1,6 @@
 .pypirc
 SECURE.txt
 test.py
+client_secret.json
+*.pyc
+quickstart.py
