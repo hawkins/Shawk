@@ -2,8 +2,8 @@ from distutils.core import setup
 setup(
     name = 'shawk',
     packages = ['shawk'],
-    version = '0.1',
-    description = 'A simple and user-friendly SMTP->SMS library',
+    version = '0.2',
+    description = 'A simple and user-friendly SMTP to SMS library',
     author = 'Josh Hawkins',
     author_email = 'jkhaccounts@gmail.com',
     url = 'https://github.com/hawkins/shawk',

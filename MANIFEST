@@ -1,0 +1,5 @@
+setup.cfg
+setup.py
+shawk\Client.py
+shawk\Contact.py
+shawk\__init__.py
