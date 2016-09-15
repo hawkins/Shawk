@@ -45,7 +45,7 @@ You can lookup contacts by address, which is equivalent to `contact.getAddress()
 
 ```Python
 for message in client.inbox:
-    contact = client.getContactFromAddress(message['FROM']) # By address
+    contact = client.getContactFromAddress('5551234567@Carrier.address') # By address
     contact = client.getContact(message) # By message sender
 ```
 
@@ -70,7 +70,7 @@ The idea here is to loop through these messages and spot new ones to respond to.
 client.refreshInbox()
 
 for message in client.inbox:
-    content = message['BODY']
+    content = message.text
 ```
 
 
