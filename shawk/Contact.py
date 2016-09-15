@@ -1,4 +1,4 @@
-# from shawk.Client import SMStoMail
+
 class Contact():
     def __init__(self, number, carrier, name=None):
         self.name = name

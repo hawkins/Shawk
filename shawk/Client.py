@@ -1,4 +1,7 @@
+
+from __future__ import print_function
 from shawk.Contact import Contact
+from shawk.Message import Message
 import smtplib
 import imapclient # Version 0.13
 import email
@@ -10,6 +13,7 @@ class Client():
         self.smtp = smtplib.SMTP("smtp.gmail.com", 587)
         self.smtp.starttls()
         self.smtp.login(str(user), str(pwd))
+        self.inbox = None
 
     def __repr__(self):
         return "<shawk.Client()>"
@@ -111,7 +115,8 @@ class Client():
         for msg in messages:
             content = msg['BODY']
             if len(content) < 140:
-                texts.append(msg)
+                contact = self.getContactFromAddress(msg['FROM'])
+                texts.append(Message(msg['BODY'], (contact or msg['FROM'])))
 
         # Update inbox in place and return it as well
         self.inbox = texts
@@ -120,6 +125,9 @@ class Client():
     def send(self, message, contact=None, number=None, name=None, carrier=None):
         if not contact and not name and not number:
             raise Exception("No contact information provided")
+
+        if isinstance(message, Message):
+            message = message.text
 
         address = None
 
