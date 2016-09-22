@@ -63,8 +63,43 @@ client.send("Message content to send", SomeContact) # or contact=SomeContact
 
 ## Receiving Messages
 
-Messages can be loaded by calling `client.refreshInbox()` which will update `client.inbox` as well as return it.
-The idea here is to loop through these messages and spot new ones to respond to.
+### Automatically
+
+Shawk clients can be configured to automatically refresh their inbox and report back with new messages.
+In this mode, Shawk will poll the IMAP server periodically and check for new messages.
+
+To do this, create your client with the `auto=True` parameter, or call `client.refreshAutomatically()`.
+
+```Python
+client = Shawk.Client('username@gmail.com', 'password', auto=True)
+# Or
+client.refreshAutomatically()
+```
+
+You can also change how frequently the server is queried.
+
+```Python
+client.setRefreshInterval(30) # Period time in seconds
+```
+
+Each time Shawk encounters a new message, it will pass its Message object to the handler function.
+By default, this simply prints out the Message as a string.
+You can override this with `client.setHandler(some_function)` where `some_function` accepts a Message object.
+
+For example:
+
+```Python
+def handler(msg):
+    print("Hey, we're popular! {} texted us!".format(msg.sender))
+
+client.setHandler(handler)
+```
+
+
+### Manually
+
+Messages can be loaded by calling `client.refreshInbox()` which will update `client.inbox` as well as return any new messages.
+You'll likely want to loop through these messages and spot new ones to respond to.
 
 ```Python
 client.refreshInbox()

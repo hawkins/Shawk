@@ -1,7 +1,7 @@
-
 from __future__ import print_function
 from shawk.Contact import Contact
 from shawk.Message import Message
+from threading import Timer
 import smtplib
 import imapclient # Version 0.13
 import email
@@ -13,7 +13,10 @@ class Client():
         self.smtp = smtplib.SMTP("smtp.gmail.com", 587)
         self.smtp.starttls()
         self.smtp.login(str(user), str(pwd))
-        self.inbox = None
+        self.inbox = []
+        self.latestMessages = []
+        self.refreshInterval = 10 # Time in seconds
+        self.handler = lambda x: print('Shawk received message: %s' % x)
 
     def __repr__(self):
         return "<shawk.Client()>"
@@ -72,7 +75,7 @@ class Client():
                 return contact
         return None
 
-    def setupInbox(self, password, folder='inbox', user=None, refresh=False):
+    def setupInbox(self, password, folder='inbox', user=None, refresh=False, auto=False):
         # Apply user if not provided
         if not user:
             user = self.__user
@@ -83,13 +86,20 @@ class Client():
         self.imap_server.select_folder('INBOX', readonly=True)
 
         # Refresh if requested
-        if refresh:
+        if refresh and not auto:
             self.refreshInbox()
+        if auto:
+            self.refreshAutomatically()
+
+    def refreshAutomatically(self):
+        if self.imap_server:
+            self.refreshInbox()
+            Timer(self.refreshInterval, self.refreshAutomatically, ()).start()
 
     def refreshInbox(self):
         # Get raw messages from imap_server
         UIDs = self.imap_server.search('ALL')
-        rawMessages = self.imap_server.fetch(UIDs, ['BODY[TEXT]', 'BODY[HEADER.FIELDS (FROM)]'])
+        rawMessages = self.imap_server.fetch(UIDs, ['BODY[TEXT]', 'BODY[HEADER.FIELDS (FROM)]', 'INTERNALDATE'])
 
         # Convert messages to string format and simplify structure
         messages = []
@@ -111,16 +121,31 @@ class Client():
 
         # Find sms messages in messages
         # TODO: Look for sender matching a Contact's address
-        texts = []
+        self.latestMessages = []
         for msg in messages:
             content = msg['BODY']
             if len(content) < 140:
+                # Create Message object
                 contact = self.getContactFromAddress(msg['FROM'])
-                texts.append(Message(msg['BODY'], (contact or msg['FROM'])))
+                newMessage = Message(msg['BODY'], (contact or msg['FROM']), msg['INTERNALDATE'])
 
-        # Update inbox in place and return it as well
-        self.inbox = texts
-        return texts
+                # Add to inbox and latestMessages
+                if newMessage not in self.inbox:
+                    self.latestMessages.append(newMessage)
+                    self.inbox.append(newMessage)
+
+        # Handle the new texts
+        for text in self.latestMessages:
+            self.handler(text)
+
+    def setRefreshInterval(self, time):
+        self.refreshInterval = time
+
+    def getRefreshInterval(self, time):
+        return self.refreshInterval
+
+    def setHandler(self, func):
+        self.handler = func
 
     def send(self, message, contact=None, number=None, name=None, carrier=None):
         if not contact and not name and not number:
