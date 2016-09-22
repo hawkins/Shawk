@@ -15,6 +15,7 @@ class Client():
         self.smtp.login(str(user), str(pwd))
         self.inbox = []
         self.latestMessages = []
+        self.autoRefreshEnabled = False
         self.refreshInterval = 10 # Time in seconds
         self.handler = lambda x: print('Shawk received message: %s' % x)
 
@@ -89,12 +90,22 @@ class Client():
         if refresh and not auto:
             self.refreshInbox()
         if auto:
+            self.enableAutoRefresh()
             self.refreshAutomatically()
 
+    def enableAutoRefresh(self):
+        self.autoRefreshEnabled = True
+
+    def disableAutoRefresh(self):
+        self.autoRefreshEnabled = False
+
     def refreshAutomatically(self):
-        if self.imap_server:
-            self.refreshInbox()
-            Timer(self.refreshInterval, self.refreshAutomatically, ()).start()
+        if self.autoRefreshEnabled:
+            if self.imap_server:
+                self.refreshInbox()
+                Timer(self.refreshInterval, self.refreshAutomatically, ()).start()
+            else:
+                raise Exception("No inbox is setup")
 
     def refreshInbox(self):
         # Get raw messages from imap_server

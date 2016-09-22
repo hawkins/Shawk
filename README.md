@@ -68,15 +68,19 @@ client.send("Message content to send", SomeContact) # or contact=SomeContact
 Shawk clients can be configured to automatically refresh their inbox and report back with new messages.
 In this mode, Shawk will poll the IMAP server periodically and check for new messages.
 
-To do this, create your client with the `auto=True` parameter, or call `client.refreshAutomatically()`.
+To do this, create your client with the `auto=True` parameter, or ecall `client.enableAutoRefresh()` and `client.refreshAutomatically()`.
+For example:
 
 ```Python
 client = Shawk.Client('username@gmail.com', 'password', auto=True)
 # Or
+client.enableAutoRefresh()
 client.refreshAutomatically()
+# Similarly, you can disable/stop auto refreshing with
+client.disableAutoRefresh()
 ```
 
-You can also change how frequently the server is queried.
+You can also change how frequently the server is queried:
 
 ```Python
 client.setRefreshInterval(30) # Period time in seconds

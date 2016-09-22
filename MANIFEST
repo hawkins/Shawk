@@ -2,4 +2,5 @@ setup.cfg
 setup.py
 shawk\Client.py
 shawk\Contact.py
+shawk\Message.py
 shawk\__init__.py
