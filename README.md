@@ -93,8 +93,10 @@ You can override this with `client.setHandler(some_function)` where `some_functi
 For example:
 
 ```Python
-def handler(msg):
+def handler(client, msg):
     print("Hey, we're popular! {} texted us!".format(msg.sender))
+    client.send("Hello, world!", msg.sender)         # if msg.sender is a contact
+    client.send("Hello, world!", address=msg.sender) # if msg.sender is an address
 
 client.setHandler(handler)
 ```

@@ -7,7 +7,7 @@ import imapclient # Version 0.13
 import email
 
 class Client():
-    def __init__(self, user, pwd):
+    def __init__(self, user, pwd, setupInbox=True, auto=True, handler=None):
         self.__user = user
         self.contacts = {}
         self.smtp = smtplib.SMTP("smtp.gmail.com", 587)
@@ -15,9 +15,18 @@ class Client():
         self.smtp.login(str(user), str(pwd))
         self.inbox = []
         self.latestMessages = []
-        self.autoRefreshEnabled = False
+        self.autoRefreshEnabled = auto
         self.refreshInterval = 10 # Time in seconds
-        self.handler = lambda x: print('Shawk received message: %s' % x)
+
+        # Handle optional arguments
+
+        if handler:
+            self.handler = handler
+        else:
+            self.handler = lambda x: print('Shawk received message: %s' % x)
+
+        if setupInbox:
+            self.setupInbox(pwd, auto=self.autoRefreshEnabled)
 
     def __repr__(self):
         return "<shawk.Client()>"
@@ -76,7 +85,7 @@ class Client():
                 return contact
         return None
 
-    def setupInbox(self, password, folder='inbox', user=None, refresh=False, auto=False):
+    def setupInbox(self, password, user=None, folder='INBOX', refresh=False, auto=False):
         # Apply user if not provided
         if not user:
             user = self.__user
@@ -84,7 +93,7 @@ class Client():
         # Connect IMAP server
         self.imap_server = imapclient.IMAPClient('imap.gmail.com', ssl=True)
         self.imap_server.login(user, password)
-        self.imap_server.select_folder('INBOX', readonly=True)
+        self.imap_server.select_folder(folder, readonly=True)
 
         # Refresh if requested
         if refresh and not auto:
@@ -147,7 +156,7 @@ class Client():
 
         # Handle the new texts
         for text in self.latestMessages:
-            self.handler(text)
+            self.handler(self, text)
 
     def setRefreshInterval(self, time):
         self.refreshInterval = time
@@ -158,47 +167,46 @@ class Client():
     def setHandler(self, func):
         self.handler = func
 
-    def send(self, message, contact=None, number=None, name=None, carrier=None):
-        if not contact and not name and not number:
+    def send(self, message, contact=None, address=None, number=None, name=None, carrier=None):
+        if not contact and not name and not number and not address:
             raise Exception("No contact information provided")
 
         if isinstance(message, Message):
             message = message.text
 
-        address = None
+        if not address:
+            # Find address from contact
+            if contact:
+                address = contact.getAddress()
 
-        # Find address from contact
-        if contact:
-            address = contact.getAddress()
+            # Find address if given number
+            if number:
+                # Ensure number is a string
+                number = str(number)
 
-        # Find address if given number
-        if number:
-            # Ensure number is a string
-            number = str(number)
-
-            # Get address of recipient
-            try:
-                address = self.contacts[number].getAddress()
-            except:
-                # Number not in contacts
-                if not carrier:
-                    # Not enough information
-                    raise Exception("Could not find number in contacts; require carrier information")
-                else:
-                    # Add it to contacts
-                    self.contacts.update({number: Contact(number, carrier)})
+                # Get address of recipient
+                try:
                     address = self.contacts[number].getAddress()
+                except:
+                    # Number not in contacts
+                    if not carrier:
+                        # Not enough information
+                        raise Exception("Could not find number in contacts; require carrier information")
+                    else:
+                        # Add it to contacts
+                        self.contacts.update({number: Contact(number, carrier)})
+                        address = self.contacts[number].getAddress()
 
-        # Find address if only given name
-        if name and not address:
-            name = str(name)
-            for key, each in self.contacts.items():
-                if each.name == name:
-                    address = each.getAddress()
-                    break
-            if not number:
-                # Name was not found in contacts
-                raise Exception("No contact found matching the name {}".format(name))
+            # Find address if only given name
+            if name and not address:
+                name = str(name)
+                for key, each in self.contacts.items():
+                    if each.name == name:
+                        address = each.getAddress()
+                        break
+                if not number:
+                    # Name was not found in contacts
+                    raise Exception("No contact found matching the name {}".format(name))
 
         # Send message to recipient
         if address:
