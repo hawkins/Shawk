@@ -1,4 +1,4 @@
-# Shawk - Free SMS with Python using SMTP and IMAP
+# <img src="https://raw.githubusercontent.com/hawkins/shawk/master/shawk.png" width="64" height="64"</img> Shawk - Free SMS with Python using SMTP and IMAP
 
 A python `smtplib` and `imapclient` wrapper to send and receive SMS messages through SMS gateways with a Gmail login. Perfect for Internet of Things projects that use a Raspberry Pi to text you!
 
