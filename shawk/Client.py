@@ -1,5 +1,6 @@
 """
 shawk.Client
+------------
 
 Define the Client interface in Shawk.
 """
@@ -12,7 +13,7 @@ import smtplib
 import imapclient
 from shawk.Contact import Contact
 from shawk.Message import Message
-from shawk import GATEWAY_REGEX
+from shawk import SMS_Address_Regex, sms_to_mail
 
 class Client(object):
     """Define the main Shawk interface."""
@@ -143,7 +144,7 @@ class Client(object):
                 return contact
         return None
 
-    def setup_inbox(self, password, user=None, folder='INBOX', refresh=False, auto=False):
+    def setup_inbox(self, password, user=None, folder='INBOX', refresh=False, auto=False, ssl=True):
         """
         Configure an IMAP connection for receiving SMS.
 
@@ -160,7 +161,7 @@ class Client(object):
             user = self.__user
 
         # Connect IMAP server
-        self.imap = imapclient.IMAPClient('imap.gmail.com', ssl=False)
+        self.imap = imapclient.IMAPClient('imap.gmail.com', ssl=ssl)
         self.imap.login(user, password)
         self.imap.select_folder(folder, readonly=True)
 
@@ -228,7 +229,7 @@ class Client(object):
         for msg in messages:
 
             # If the sender's email address is in our supported gateways
-            if re.match(GATEWAY_REGEX, msg['FROM']):
+            if re.match(SMS_Address_Regex, msg['FROM']):
 
                 # Create Message object
                 contact = self.get_contact_from_address(msg['FROM'])
@@ -258,6 +259,11 @@ class Client(object):
 
         self.handler = func
 
+    def __sendmail(self, address, message):
+        """Send the content of message to address."""
+
+        return self.smtp.sendmail('0', address, message)
+
     def send(self, message, contact=None, address=None, number=None, name=None, carrier=None):
         """
         Send a message.
@@ -271,16 +277,15 @@ class Client(object):
         if not contact and not name and not number and not address:
             raise Exception("No contact information provided")
 
+        # Convert Message instances to string
         if isinstance(message, Message):
             message = message.text
 
         # Send message to recipient
         if address:
-            self.smtp.sendmail('0', address, message)
-            return
+            return self.__sendmail(address, message)
         if contact:
-            self.smtp.sendmail('0', contact.get_address(), message)
-            return
+            return self.__sendmail(contact.get_address(), message)
 
         # Address is not readily available, determine from other inputs
 
@@ -291,19 +296,17 @@ class Client(object):
             # Get address of recipient
             try:
                 address = self.contacts[number].get_address()
+                return self.__sendmail(address, message)
             except KeyError:
                 # Number not in contacts
                 if not carrier:
                     # Not enough information
-                    raise Exception("Could not find number in contacts; require carrier information")
+                    raise Exception("Could not find number {} in contacts; require carrier information".format(number))
                 else:
-                    # Add it to contacts
-                    self.contacts.update({number: Contact(number, carrier)})
-                    address = self.contacts[number].get_address()
-
+                    # Build address
+                    address = sms_to_mail(number, carrier)
                     # Send the message
-                    self.smtp.sendmail('0', address, message)
-                    return
+                    return self.__sendmail(address, message)
 
         # Find address if only given name
         if name and not address:
@@ -313,8 +316,7 @@ class Client(object):
                     address = each.get_address()
 
                     # Send the message
-                    self.smtp.sendmail('0', address, message)
-                    return
+                    return self.__sendmail(address, message)
 
             if not number:
                 # Name was not found in contacts

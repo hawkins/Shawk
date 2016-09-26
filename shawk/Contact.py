@@ -1,10 +1,11 @@
 """
 shawk.Contact
+-------------
 
 Define the Contact representation in Shawk.
 """
 
-from shawk import GATEWAYS
+from shawk import Gateways, sms_to_mail
 
 class Contact(object):
     """Define the structure for contacts."""
@@ -40,8 +41,3 @@ class Contact(object):
         """Return the carrier of the Contact."""
 
         return self.carrier
-
-def sms_to_mail(number, carrier):
-    """Return the email address of some number and some carrier mapped to a gateway."""
-
-    return '{}@{}'.format(number, GATEWAYS[carrier])

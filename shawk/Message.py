@@ -1,5 +1,6 @@
 """
 shawk.Message
+-------------
 
 Define the Message representation in Shawk.
 """

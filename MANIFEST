@@ -1,5 +1,6 @@
 setup.cfg
 setup.py
+shawk/Gateways.py
 shawk/Client.py
 shawk/Contact.py
 shawk/Message.py
