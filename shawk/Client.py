@@ -90,7 +90,7 @@ class Client(object):
         else:
             self.contacts.update({str(number): Contact(number, carrier)})
 
-    def remove_contact(self, number=None, name=None, contact=None):
+    def remove_contact(self, contact=None, number=None, name=None):
         """Remove a contact from contacts."""
 
         if not number and not name and not contact:
