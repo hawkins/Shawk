@@ -5,7 +5,7 @@ A python `smtplib` and `imapclient` wrapper to send and receive SMS messages thr
 
 ##### Disclaimer
 
-> This project is a work in progress, and as such API may change drastically before version 1.0 is reached. This repo may be out-of-sync with the PyPi version, so if you're interested in using the bleeding-edge features added since last tag, clone the repo and import locally. Tags will reflect PyPi published versions.
+> This project is a work in progress, and as such, the API may change drastically before version 1.0 is reached. This repo may be out-of-sync with the PyPi version, so if you're interested in using the bleeding-edge features added since last tag, clone the repo and import locally. Tags will reflect PyPi published versions.
 
 
 # Installation
@@ -16,8 +16,12 @@ Shawk is available on PyPi as such:
 pip install shawk
 ```
 
+# Documentation
 
-# Usage
+To see full documentation and a more detailed Getting Started page, [see here](https://shawk.readthedocs.io/en/latest/Getting%20Started.html).
+
+
+# Simple Usage Example
 
 ## Sending Messages
 
@@ -40,16 +44,6 @@ client.add_contact("5551234567", 'Carrier', 'Name')
 client.add_contact("18008675309", 'Carrier')
 ```
 
-#### Lookup Contacts
-
-You can lookup contacts by address, which is equivalent to `contact.get_address()`, or by providing a message in which the contact is the sender.
-
-```Python
-for message in client.inbox:
-    contact = client.get_contact_from_address('5551234567@Carrier.address') # By address
-    contact = client.get_contact(message) # By message sender
-```
-
 
 #### Send SMS:
 
@@ -62,23 +56,15 @@ client.send("Message content to send", number="5551234567")
 ```
 
 
-## Receiving Messages
-
-### Automatically
+## Receiving Messages Automatically
 
 Shawk clients can be configured to automatically refresh their inbox and report back with new messages.
 In this mode, Shawk will poll the IMAP server periodically and check for new messages.
 
-To do this, create your client with the `auto=True` parameter, or call `client.enable_auto_refresh()` and `client.refresh_automatically()`.
-For example:
+To do this, create your client with the `auto=True` parameter, or [see the docs](https://shawk.readthedocs.io/en/latest/Client.html#shawk.Client.Client.setup_inbox) for other methods.
 
 ```Python
 client = Shawk.Client('username@gmail.com', 'password', auto=True)
-# Or
-client.enable_auto_refresh()
-client.refresh_automatically()
-# Similarly, you can disable/stop auto refreshing with
-client.disable_auto_refresh()
 ```
 
 You can also change how frequently the server is queried:
@@ -88,40 +74,17 @@ client.set_refresh_interval(30) # Period time in seconds
 ```
 
 Each time Shawk encounters a new message, it will pass its Message object to the handler function.
-By default, this simply prints out the Message as a string.
-You can override this with `client.set_handler(some_function)` where `some_function` accepts a Message object.
+You can define the behavior here with `client.set_handler(some_function)` where `some_function` accepts a Message object.
 
 For example:
 
 ```Python
 def handler(client, msg):
     print("Hey, we're popular! {} texted us!".format(msg.sender))
-    client.send("Hello, world!", msg.sender)         # if msg.sender is a contact
-    client.send("Hello, world!", address=msg.sender) # if msg.sender is an address
+    if isinstance(msg.sender, str):                      # if msg.sender is a string
+        client.send("Hello, world!", address=msg.sender) # then msg.sender is an address
+    else:
+        client.send("Hello, world!", msg.sender)         # then msg.sender is a Contact
 
 client.set_handler(handler)
-```
-
-
-### Manually
-
-Messages can be loaded by calling `client.refresh_inbox()` which will update `client.inbox` as well as return any new messages.
-You'll likely want to loop through these messages and spot new ones to respond to.
-
-```Python
-client.refresh_inbox()
-
-for message in client.inbox:
-    content = message.text
-```
-
-
-#### Respond to Message
-
-You can get contacts from a message in order to more easily respond.
-
-```Python
-for message in client.inbox:
-    contact = client.get_contact(message)
-    client.send("Message received", contact)
 ```

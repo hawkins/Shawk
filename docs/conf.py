@@ -278,7 +278,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   (master_doc, 'Shawk', 'Shawk Documentation',
-   author, 'Shawk', 'One line description of project.',
+   author, 'Shawk', 'A Python library to send and receive SMS messages.',
    'Miscellaneous'),
 ]
 

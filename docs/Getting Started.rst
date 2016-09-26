@@ -1,6 +1,7 @@
 Getting Started
 ===============
 
+.. _getting-started:
 .. highlight:: python
 
 The idea of Shawk is to provide an easy-to-use interface for sending and receiving text messages.
