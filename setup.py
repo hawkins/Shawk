@@ -11,6 +11,6 @@ setup(
     keywords = ['sms', 'smtp', 'imap', 'hawkins', 'simple'], # arbitrary keywords
     classifiers = [],
     install_requires=[
-        'imapclient==0.13',
+        'imapclient>=1.0.2',
     ],
 )
