@@ -8,6 +8,7 @@ Define the Client interface in Shawk.
 from __future__ import print_function
 from threading import Timer
 import email
+import csv
 import re
 import smtplib
 import imapclient
@@ -105,9 +106,9 @@ class Client(object):
 
         # Check name
         if not number:
-            for each in self.contacts:
-                if each.name == name:
-                    number = each.number
+            for _, c in self.contacts.items():
+                if c.get_name() == name:
+                    number = c.get_number()
                     break
 
         # Raise exception if not found
@@ -258,6 +259,40 @@ class Client(object):
         """Set the handler function callback for new messages."""
 
         self.handler = func
+
+    def export_contacts(self, path):
+        """Export the current contacts to a Shawk CSV file."""
+
+        # Open path to overwrite
+        with open(path, 'w') as outcsv:
+            writer = csv.writer(outcsv, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL, lineterminator='\n')
+            # Add version specific formatting
+            writer.writerow(['Shawk contacts file', 'v', '0.4'])
+            # Add each contact's information
+            for _, contact in self.contacts.items():
+                print(contact)
+                writer.writerow([contact.get_number(), contact.get_carrier(), contact.get_name()])
+
+    def import_contacts(self, path):
+        """Import contacts from a Shawk CSV file."""
+
+        csv_version = ''
+
+        # Open path to read
+        with open(path, 'r') as incsv:
+            reader = csv.reader(incsv, delimiter=',', quotechar='|')
+            for row in reader:
+                # If this is the first row 
+                if row[0] == 'Shawk contacts file' and row[1] == 'v':
+                    csv_version = row[2]
+                else:
+                    self.contacts[row[0]] = Contact(number=row[0], carrier=row[1], name=row[2])
+
+    def print_contacts(self):
+        """Print the contacts"""
+
+        for _, c in self.contacts.items():
+            print(c)
 
     def __sendmail(self, address, message):
         """Send the content of message to address."""

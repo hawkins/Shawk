@@ -20,12 +20,12 @@ class Contact(object):
     def __repr__(self):
         """Return the object representation of the Contact."""
 
-        return "<shawk.Contact('{}', '{}', '{}')>".format(self.name, self.number, self.carrier)
+        return "<shawk.Contact('{}', '{}', '{}')>".format(self.number, self.carrier, self.name if self.name else '<No name>')
 
     def __str__(self):
         """Return the String representation of the Contact."""
 
-        return "{}: {} ({})".format(self.name, self.number, self.carrier)
+        return "{}: {} ({})".format(self.name if self.name else '<No name>', self.number, self.carrier)
 
     def get_address(self):
         """Return the email address of the Contact."""
@@ -41,3 +41,9 @@ class Contact(object):
         """Return the carrier of the Contact."""
 
         return self.carrier
+
+    def get_name(self):
+        """Return the name of the Contact."""
+
+        return self.name
+
