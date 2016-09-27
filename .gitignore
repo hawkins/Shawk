@@ -7,3 +7,4 @@ quickstart.py
 dist
 built_docs
 build_docs.sh
+*.csv

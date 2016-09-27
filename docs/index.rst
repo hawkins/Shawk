@@ -21,6 +21,7 @@ Module Index
    :maxdepth: 2
 
    Getting Started
+   Configuring Gmail
    Client
    Contact
    Message
