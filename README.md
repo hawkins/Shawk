@@ -79,12 +79,11 @@ You can define the behavior here with `client.set_handler(some_function)` where 
 For example:
 
 ```Python
+@client.text_handler()
 def handler(client, msg):
     print("Hey, we're popular! {} texted us!".format(msg.sender))
     if isinstance(msg.sender, str):                      # if msg.sender is a string
         client.send("Hello, world!", address=msg.sender) # then msg.sender is an address
     else:
         client.send("Hello, world!", msg.sender)         # then msg.sender is a Contact
-
-client.set_handler(handler)
 ```

@@ -131,26 +131,34 @@ By default, shawk will simply print the contents of the new messages when it fin
 
 That's not particularly useful, so we'll let you dictate how Shawk `should` be used.
 
-This default behavior can be overridden by defining a handler function that receives a client and message.
-This handler function is just a callback function.
-You'll attach the handler function either with the `handler=handler` argument during Client initialization, or by calling `client.set_handler(handler)` later.
+This default behavior can be overridden by defining one or more handler functions that receive a client, message, and a regex match object.
+These handler function are just callback functions with the `@client.text_handler(regex)` decorator, where regex is some regular expression in string form.
 
-You can also skip the `setup_inbox()` call by initializing your Client with `inbox=True`.
+If no regex is provided, then the function is considered the default case handler, and will be used whenever any other handler regex's do not match.
+
 
 You can define your own behavior as follows:
 
 .. code-block:: python
 
+    c = shawk.Client('username@gmail.com', 'password', inbox=True, auto=True)
+
+    @client.text_handler()
     def handler(client, msg):
         print("Hey, we're popular! %s texted us!" % msg.sender)
         print("Received: %s" % msg.text)
 
         client.send("I got your text!", msg.sender)
 
-    c = shawk.Client('username@gmail.com', 'password', inbox=True, auto=True, handler=handler)
+    # Or with a regex
+    @client.text_handler('^Print (.*)', 'i') # Starts with "print", matches text following. Case insensitive.
+    def print_dot_z(client, msg, match):
+        print(match.group(1))
 
-Naturally, you'll do something a bit more meaningful in your handler function.
-But since it's a simple python function, you've got free reign to interface with your scripts however you like.
+Naturally, you'll do something a bit more meaningful in your handler functions.
+But since they're just simple python functions, you've got free reign to interface with your scripts however you like.
+
+
 
 I hope you've found that Shawk is pretty easy to use, yet very powerful, since it allows your users to provide input and receive output via SMS, for free.
 

@@ -19,7 +19,7 @@ from shawk import SMS_Address_Regex, sms_to_mail
 class Client(object):
     """Define the main Shawk interface."""
 
-    def __init__(self, user, pwd, inbox=True, auto=True, handler=None):
+    def __init__(self, user, pwd, inbox=True, auto=True):
         """
         Initialize the client and configure SMTP for sending messages.
 
@@ -28,11 +28,13 @@ class Client(object):
         """
 
         self.__user = user
+        self.auto_refresh_enabled = auto
         self.contacts = {}
         self.inbox = []
         self.latest_messages = []
-        self.auto_refresh_enabled = auto
         self.refresh_interval = 10 # Time in seconds
+        self.text_handlers = {}
+        self.default_text_handler = lambda x: print('Shawk received message: %s' % x)
 
         # Configure SMTP
 
@@ -42,10 +44,6 @@ class Client(object):
 
         # Handle optional arguments
 
-        if handler:
-            self.handler = handler
-        else:
-            self.handler = lambda x: print('Shawk received message: %s' % x)
 
         if inbox:
             self.setup_inbox(pwd, auto=self.auto_refresh_enabled)
@@ -242,8 +240,20 @@ class Client(object):
                     self.inbox.append(new_msg)
 
         # Handle the new texts
-        for text in self.latest_messages:
-            self.handler(self, text)
+        for msg in self.latest_messages:
+            matched = False
+
+            # For each regex and function in text_handlers
+            for regex, func in self.text_handlers.items():
+                match = regex.match(msg.text)
+                # If a match occurred, call the function
+                if match:
+                    matched = True
+                    func(self, msg, match)
+
+            # If we did not match any specific regex
+            if not matched:
+                self.default_text_handler(self, msg)
 
     def set_refresh_interval(self, time):
         """Define the refresh interval for auto refresh."""
@@ -255,10 +265,56 @@ class Client(object):
 
         return self.refresh_interval
 
-    def set_handler(self, func):
-        """Set the handler function callback for new messages."""
+    def text_handler(self, pattern=None, modifiers=''):
+        """
+        Define a decorator that accepts a regular expression in string form for handlers.
 
-        self.handler = func
+        Sets the default text handler if no string is provided.
+        """
+
+        # Collect modifiers
+        modifiers = modifiers.lower()
+        flags = None
+        if 's' in modifiers:
+            flags = re.DOTALL     if not flags else flags | re.DOTALL
+        if 'i' in modifiers:
+            flags = re.IGNORECASE if not flags else flags | re.IGNORECASE
+        if 'm' in modifiers:
+            flags = re.MULTILINE  if not flags else flags | re.MULTILINE
+        if 'l' in modifiers:
+            flags = re.LOCALE     if not flags else flags | re.LOCALE
+        if 'u' in modifiers:
+            flags = re.UNICODE    if not flags else flags | re.UNICODE
+        if 'x' in modifiers:
+            flags = re.VERBOSE    if not flags else flags | re.VERBOSE
+
+        # Compile the regular expression
+        try:
+            if flags:
+                text_regex = re.compile(pattern, flags)
+            else:
+                text_regex = re.compile(pattern)
+        except Exception as e:
+            # If text was provided
+            if pattern:
+                raise Exception("An error occured while compiling regex: ", e)
+            else:
+                pass
+
+        def decorator(func):
+            """Closure that receives function."""
+
+            # Set the default text handler if no regex is provided
+            if not pattern:
+                self.default_text_handler = func
+            else:
+                self.text_handlers[text_regex] = func
+
+            # Return unmodified function
+            return func
+
+        # Return decorator
+        return decorator
 
     def export_contacts(self, path):
         """Export the current contacts to a Shawk CSV file."""
@@ -282,7 +338,7 @@ class Client(object):
         with open(path, 'r') as incsv:
             reader = csv.reader(incsv, delimiter=',', quotechar='|')
             for row in reader:
-                # If this is the first row 
+                # If this is the first row
                 if row[0] == 'Shawk contacts file' and row[1] == 'v':
                     csv_version = row[2]
                 else:
@@ -311,6 +367,9 @@ class Client(object):
 
         if not contact and not name and not number and not address:
             raise Exception("No contact information provided")
+
+        if contact:
+            assert(type(contact) is Contact)
 
         # Convert Message instances to string
         if isinstance(message, Message):
