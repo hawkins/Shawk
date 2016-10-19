@@ -32,6 +32,7 @@ class Client(object):
         self.contacts = {}
         self.inbox = []
         self.latest_messages = []
+        self.processed_label = "[Shawk]/Processed"
         self.refresh_interval = 10 # Time in seconds
         self.text_handlers = {}
         self.default_text_handler = lambda x: print('Shawk received message: %s' % x)
@@ -143,12 +144,27 @@ class Client(object):
                 return contact
         return None
 
+    def set_processed_label(self, label):
+        """Set the processed message label to store messages in."""
+
+        self.processed_label = label
+
+    def mark_uid_processed(self, uid):
+        """Set this email's label to processed_label"""
+
+        # Move uid to folder
+        self.imap.copy(uid, self.processed_label)
+        self.imap.delete_messages(uid)
+
     def setup_inbox(self, password, user=None, folder='INBOX', refresh=False, auto=False, ssl=True):
         """
         Configure an IMAP connection for receiving SMS.
 
         Optionally configure behaviours such as auto-refresh,
         refresh immediately once configured, or specify a folder.
+
+        This method will also attempt to create a folder (aka label) in your
+        Gmail account to store processed messages in.
 
         Folder specifications are useful if you configure your Gmail account to
         filter messages from certain senders to be moved to a specific folder,
@@ -162,7 +178,13 @@ class Client(object):
         # Connect IMAP server
         self.imap = imapclient.IMAPClient('imap.gmail.com', ssl=ssl)
         self.imap.login(user, password)
-        self.imap.select_folder(folder, readonly=True)
+        self.imap.select_folder(folder)
+
+        # Create processed folder
+        try:
+            self.imap.create_folder(self.processed_label)
+        except:
+            pass
 
         # Refresh if requested
         if refresh and not auto:
@@ -234,8 +256,13 @@ class Client(object):
                 contact = self.get_contact_from_address(msg['FROM'])
                 new_msg = Message(msg['BODY'], (contact or msg['FROM']), msg['INTERNALDATE'])
 
-                # Add to inbox and latest_messages
+                # Track message uid
+                new_msg.uid = msg['UID']
+
+                # If this message is new
                 if new_msg not in self.inbox:
+
+                    # Add to inbox and latest_messages
                     self.latest_messages.append(new_msg)
                     self.inbox.append(new_msg)
 
@@ -245,7 +272,10 @@ class Client(object):
 
             # For each regex and function in text_handlers
             for regex, func in self.text_handlers.items():
+
+                # Execute regex on the text
                 match = regex.match(msg.text)
+
                 # If a match occurred, call the function
                 if match:
                     matched = True
@@ -253,7 +283,12 @@ class Client(object):
 
             # If we did not match any specific regex
             if not matched:
+
+                # Execute default text handler
                 self.default_text_handler(self, msg)
+
+            # Move message to processed_label
+            self.mark_uid_processed(msg.uid)
 
     def set_refresh_interval(self, time):
         """Define the refresh interval for auto refresh."""
