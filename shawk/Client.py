@@ -6,7 +6,8 @@ Define the Client interface in Shawk.
 """
 
 from __future__ import print_function
-from threading import Timer
+from threading import Thread
+from time import sleep
 import email
 import csv
 import re
@@ -17,7 +18,7 @@ from shawk.Message import Message
 from shawk import SMS_Address_Regex, sms_to_mail
 
 class Client(object):
-    """Define the main Shawk interface."""
+    """Define the main Shawk interface"""
 
     def __init__(self, user, pwd, inbox=True, auto=True):
         """
@@ -33,7 +34,7 @@ class Client(object):
         self.inbox = []
         self.latest_messages = []
         self.processed_label = "[Shawk]/Processed"
-        self.refresh_interval = 10 # Time in seconds
+        self.refresh_interval = 60 # Time in seconds
         self.text_handlers = {}
         self.default_text_handler = lambda x: print('Shawk received message: %s' % x)
 
@@ -50,17 +51,17 @@ class Client(object):
             self.setup_inbox(pwd, auto=self.auto_refresh_enabled)
 
     def __repr__(self):
-        """Return the object representation of the Client."""
+        """Return the object representation of the Client"""
 
         return "<shawk.Client({})>".format(self.__user)
 
     def __str__(self):
-        """Return the String representation of the Client."""
+        """Return the String representation of the Client"""
 
         return "A Shawk SMS Client for {}".format(self.__user)
 
     def __del__(self):
-        """Delete the object."""
+        """Delete the object"""
 
         self.smtp.quit()
         try:
@@ -92,7 +93,7 @@ class Client(object):
             self.contacts.update({str(number): Contact(number, carrier)})
 
     def remove_contact(self, contact=None, number=None, name=None):
-        """Remove a contact from contacts."""
+        """Remove a contact from contacts"""
 
         if not number and not name and not contact:
             raise Exception("No identifier provided")
@@ -145,11 +146,11 @@ class Client(object):
         return None
 
     def set_processed_label(self, label):
-        """Set the processed message label to store messages in."""
+        """Set the processed message label to store messages in"""
 
         self.processed_label = label
 
-    def mark_uid_processed(self, uid):
+    def __mark_uid_processed(self, uid):
         """Set this email's label to processed_label"""
 
         # Move uid to folder
@@ -190,8 +191,7 @@ class Client(object):
         if refresh and not auto:
             self.refresh()
         if auto:
-            self.enable_auto_refresh()
-            self.auto_refresh()
+            self.enable_auto_refresh(start=True)
 
     def enable_auto_refresh(self, start=True):
         """
@@ -206,22 +206,33 @@ class Client(object):
             self.auto_refresh()
 
     def disable_auto_refresh(self):
-        """Disable auto refresh of inbox."""
+        """Disable auto refresh of inbox"""
 
         self.auto_refresh_enabled = False
 
     def auto_refresh(self):
-        """Refresh the inbox automatically on an interval."""
+        """Refresh the inbox automatically on an interval"""
 
-        if self.auto_refresh_enabled:
-            if self.imap:
-                self.refresh()
-                Timer(self.refresh_interval, self.auto_refresh, ()).start()
-            else:
-                raise Exception("No inbox is setup")
+        # If email inbox is configured
+        if self.imap:
+            # Start daemon thread
+            self.thread = Thread(target=self.__daemon)
+            self.thread.daemon = True
+            self.thread.start()
+        else:
+             raise Exception("No inbox is setup")
+
+    def __daemon(self):
+        """Runs in background to refresh periodically until autO_refresh is disabled"""
+
+        # Run until no longer enabled
+        while self.auto_refresh_enabled:
+            self.refresh()
+
+            sleep(self.refresh_interval)
 
     def refresh(self):
-        """Refresh the inbox only once."""
+        """Refresh the inbox only once"""
 
         # Get raw messages from imap
         uids = self.imap.search('ALL')
@@ -288,15 +299,15 @@ class Client(object):
                 self.default_text_handler(self, msg)
 
             # Move message to processed_label
-            self.mark_uid_processed(msg.uid)
+            self.__mark_uid_processed(msg.uid)
 
-    def set_refresh_interval(self, time):
-        """Define the refresh interval for auto refresh."""
+    def set_refresh_interval(self, interval):
+        """Define the refresh interval for auto refresh"""
 
-        self.refresh_interval = time
+        self.refresh_interval = interval
 
     def get_refresh_interval(self):
-        """Return the refresh interval for auto refresh."""
+        """Return the refresh interval for auto refresh"""
 
         return self.refresh_interval
 
@@ -337,7 +348,7 @@ class Client(object):
                 pass
 
         def decorator(func):
-            """Closure that receives function."""
+            """Closure that receives function"""
 
             # Set the default text handler if no regex is provided
             if not pattern:
@@ -352,7 +363,7 @@ class Client(object):
         return decorator
 
     def export_contacts(self, path):
-        """Export the current contacts to a Shawk CSV file."""
+        """Export the current contacts to a Shawk CSV file"""
 
         # Open path to overwrite
         with open(path, 'w') as outcsv:
@@ -365,7 +376,7 @@ class Client(object):
                 writer.writerow([contact.get_number(), contact.get_carrier(), contact.get_name()])
 
     def import_contacts(self, path):
-        """Import contacts from a Shawk CSV file."""
+        """Import contacts from a Shawk CSV file"""
 
         csv_version = ''
 
@@ -386,7 +397,7 @@ class Client(object):
             print(c)
 
     def __sendmail(self, address, message):
-        """Send the content of message to address."""
+        """Send the content of message to address"""
 
         return self.smtp.sendmail('0', address, message)
 
