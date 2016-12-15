@@ -18,9 +18,9 @@ from shawk.Message import Message
 from shawk import SMS_Address_Regex, sms_to_mail
 
 class Client(object):
-    """Define the main Shawk interface"""
+    """Client is the main Shawk interface"""
 
-    def __init__(self, user, pwd, inbox=True, auto=True):
+    def __init__(self, user, pwd):
         """
         Initialize the client and configure SMTP for sending messages.
 
@@ -29,26 +29,19 @@ class Client(object):
         """
 
         self.__user = user
-        self.auto_refresh_enabled = auto
         self.contacts = {}
         self.inbox = []
         self.latest_messages = []
         self.processed_label = "[Shawk]/Processed"
-        self.refresh_interval = 60 # Time in seconds
+        self.refresh_interval = 0 # Time in seconds
+        self.auto_refresh_enabled = False
         self.text_handlers = {}
         self.default_text_handler = lambda x: print('Shawk received message: %s' % x)
 
         # Configure SMTP
-
         self.smtp = smtplib.SMTP("smtp.gmail.com", 587)
         self.smtp.starttls()
         self.smtp.login(str(user), str(pwd))
-
-        # Handle optional arguments
-
-
-        if inbox:
-            self.setup_inbox(pwd, auto=self.auto_refresh_enabled)
 
     def __repr__(self):
         """Return the object representation of the Client"""
@@ -111,7 +104,7 @@ class Client(object):
                     number = c.get_number()
                     break
 
-        # Raise exception if not found
+        # Raise exception if number not found
         if not number:
             raise Exception("No matching contact found")
 
@@ -164,7 +157,7 @@ class Client(object):
         Optionally configure behaviours such as auto-refresh,
         refresh immediately once configured, or specify a folder.
 
-        This method will also attempt to create a folder (aka label) in your
+        This method will also attempt to create a folder/label in your
         Gmail account to store processed messages in.
 
         Folder specifications are useful if you configure your Gmail account to
@@ -182,57 +175,61 @@ class Client(object):
         self.imap.select_folder(folder)
 
         # Create processed folder
-        try:
+        if not self.imap.folder_exists(self.processed_label):
             self.imap.create_folder(self.processed_label)
-        except:
-            pass
 
         # Refresh if requested
         if refresh and not auto:
             self.refresh()
-        if auto:
+        elif auto:
             self.enable_auto_refresh(start=True)
 
-    def enable_auto_refresh(self, start=True):
+    def enable_auto_refresh(self, start=True, verbose=False):
         """
-        Enable auto refresh of inbox.
+        Enable auto refresh of inbox
 
         Will also begin refreshing now, but can be disabled with `start=False`.
+
+        Can optionally log information about each refresh with `verbose=True`.
         """
 
         self.auto_refresh_enabled = True
 
         if start:
-            self.auto_refresh()
+            self.__auto_refresh(verbose)
 
     def disable_auto_refresh(self):
         """Disable auto refresh of inbox"""
 
         self.auto_refresh_enabled = False
 
-    def auto_refresh(self):
+    def __auto_refresh(self, verbose):
         """Refresh the inbox automatically on an interval"""
 
         # If email inbox is configured
         if self.imap:
             # Start daemon thread
-            self.thread = Thread(target=self.__daemon)
+            self.thread = Thread(target=self.__daemon, args=(verbose,))
             self.thread.daemon = True
             self.thread.start()
         else:
              raise Exception("No inbox is setup")
 
-    def __daemon(self):
+    def __daemon(self, verbose):
         """Runs in background to refresh periodically until autO_refresh is disabled"""
 
         # Run until no longer enabled
         while self.auto_refresh_enabled:
-            self.refresh()
+            self.refresh(verbose)
 
             sleep(self.refresh_interval)
 
-    def refresh(self):
-        """Refresh the inbox only once"""
+    def refresh(self, verbose=False):
+        """
+        Refresh the inbox only once
+
+        Optionally enable logging with `verbose=True`
+        """
 
         # Get raw messages from imap
         uids = self.imap.search('ALL')
@@ -300,6 +297,10 @@ class Client(object):
 
             # Move message to processed_label
             self.__mark_uid_processed(msg.uid)
+
+        # Log if requested
+        if verbose:
+            print("Found {} new messages".format(len(self.latest_messages)))
 
     def set_refresh_interval(self, interval):
         """Define the refresh interval for auto refresh"""

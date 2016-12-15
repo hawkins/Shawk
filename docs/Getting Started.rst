@@ -32,13 +32,11 @@ To best understand how to use shawk, let's break it down into a few features:
 Creating a client
 -----------------
 
-The first thing you'll want to do after installing shawk is create a client.
+The first thing you'll want to do after installing Shawk is create a client.
 This is the main interface you'll use in Shawk.
-You can define multiple clients, but for the sake of this tutorial, we'll just use one.
+You can define multiple clients, of course, but for the sake of this tutorial, we'll just use one.
 
-We'll say our Gmail login username is `"username@gmail.com"` and our password is `"password"`.
-
-We can create our client like this:
+If we say our Gmail login username is `"username@gmail.com"` and our password is `"password"`, then we can create our client like this:
 
 .. code-block:: python
 
@@ -46,25 +44,29 @@ We can create our client like this:
 
     user = "username@gmail.com"
     password = "password"
-    client = shawk.Client(user, password, inbox=False)
+    client = shawk.Client(user, password)
 
 
 Adding/removing contacts
 ------------------------
 
 Adding contacts will be helpful for understanding who texted your client or specifying who you would like to text in an easy and readable manner.
+Email gateways are a bit wonky at best, so contacts require both a phone number and carrier.
+Additionally, you can specify a contact name to make things easier, but that is optional.
+
+Say you want to add a contact Josh who uses Verizon and has a phone number of 1234567890.
 
 You can add them as such:
 
 .. code-block:: python
 
-    client.add_contact(1234567890, 'Verizon', 'Josh')
+    client.add_contact(1234567890, 'Verizon', 'Josh') # Note: name/'Josh' is optional
 
 You can similarly remove them in any of the following ways:
 
 .. code-block:: python
 
-    client.remove_contact(contact) # Where contact is some Contact object. More on that later.
+    client.remove_contact(contact) # Where contact is some shawk.Contact object, which you can get from messages
     # or
     client.remove_contact(number=1234567890)
     # or
@@ -76,8 +78,9 @@ Sending messages
 
 You're limited to texting only your contacts you've previously defined, or those whose explicit address you have obtained.
 This is, in-part, a restriction to prevent spam bots from abusing Shawk, but also a means of simplifying Number to Address mappings.
+What this means is, in order to send someone a text message, you can either add them as a contact or reply to a message they send you.
 
-So, after you've defined a contact, you can text them by specifying their name, number, or Contact:
+So, if you defined a contact, you can text them by specifying their name, number, or Contact:
 
 .. code-block:: python
 
@@ -97,13 +100,15 @@ We can get the new ones manually by first setting up our inbox and refreshing it
 
 .. code-block:: python
 
-    client.setup_inbox(password, auto=False)
-
+    client.setup_inbox(password) # We don't save your password, so send it again
     client.refresh_inbox()
+
+    # or...
+    client.setup_inbox(password, refresh=True)
 
 This will handle the IMAP server connection for retrieving new messages to your Gmail account.
 
-You can actually use a distinct Gmail account from the one you use to send messages, but we won't focus on that for this simple tutorial.
+You can actually use a distinct Gmail account from the one you use to send messages by passing a user: string, but we won't focus on that for this simple tutorial.
 As always, read the rest of the docs if you'd like to know more about that.
 
 
@@ -117,41 +122,50 @@ To do this, setup your inbox as such:
 
 .. code-block:: python
 
+    client.setup_inbox(password)
+    client.enable_auto_refresh()
+
+    # or...
     client.setup_inbox(password, auto=True)
+
 
 Boom. Done. Your client now automatically pings the server and looks for new messages!
 
-You can configure the time interval with `client.set_interval()`, more on that in the docs.
+You can configure the time interval with `client.set_interval()`, which you can read more about in the docs.
 
 
 Defining behavior for new messages
 ----------------------------------
 
-By default, shawk will simply print the contents of the new messages when it finds them.
+At this point, I hope you've asked yourself, "But what will Shawk do when it receives a message?"
+By default, Shawk will simply print the contents of the new messages when it finds them.
 
 That's not particularly useful, so we'll let you dictate how Shawk `should` be used.
 
 This default behavior can be overridden by defining one or more handler functions that receive a client, message, and a regex match object.
 These handler function are just callback functions with the `@client.text_handler(regex)` decorator, where regex is some regular expression in string form.
 
-If no regex is provided, then the function is considered the default case handler, and will be used whenever any other handler regex's do not match.
+If no regex is provided, then the function is considered the default case handler, and will be used whenever no other handler's regex pattern match a received text.
+
+Whew.
 
 
-You can define your own behavior as follows:
+So, you can define your own behavior as follows:
 
 .. code-block:: python
 
-    c = shawk.Client('username@gmail.com', 'password', inbox=True, auto=True)
+    c = shawk.Client('username@gmail.com', 'password')
+    c.setup_inbox('password')
 
-    @client.text_handler()
+    @client.text_handler() # No arguments, so Shawk knows this is our default handler
     def handler(client, msg):
         print("Hey, we're popular! %s texted us!" % msg.sender)
         print("Received: %s" % msg.text)
 
-        client.send("I got your text!", msg.sender)
+        client.send("I am replying to your text!", msg.sender)
 
     # Or with a regex
-    @client.text_handler('^Print (.*)', 'i') # Starts with "print", matches text following. Case insensitive.
+    @client.text_handler('^Print (.*)', 'i') # Starts with "print" (case insensitive because of 'i' flag), matches text following.
     def print_dot_z(client, msg, match):
         print(match.group(1))
 
