@@ -1,6 +1,7 @@
 # <img src="https://raw.githubusercontent.com/hawkins/shawk/master/shawk.png" width="64" height="64"</img> Shawk - Free SMS with Python using SMTP and IMAP
 
-A python `smtplib` and `imapclient` wrapper to send and receive SMS messages through SMS gateways with a Gmail login. Perfect for Internet of Things projects that use a Raspberry Pi to text you!
+A python `smtplib` and `imapclient` wrapper to send and receive SMS messages through SMS gateways with a Gmail login.
+Perfect for Internet of Things projects that use a Raspberry Pi to text you!
 
 
 ##### Disclaimer
@@ -37,11 +38,10 @@ client = shawk.Client('username@gmail.com', 'password')
 
 #### (Optionally) Add Contacts:
 
-Use the `add_contact()` function to add a contact's number as string or integer, carrier, and (optionally) a name. You can even pass in a lists of multiple numbers, names, and carriers.
+Use the `add_contact()` function to add a contact's number as string or integer, carrier, and (optionally) a name.
 
 ```Python
-client.add_contact("5551234567", 'Carrier', 'Name')
-client.add_contact("18008675309", 'Carrier')
+some_contact = client.add_contact("5551234567", 'Carrier', 'Name')
 ```
 
 
@@ -50,7 +50,7 @@ client.add_contact("18008675309", 'Carrier')
 Shawk can send texts either by providing a Contact object, phone number, or name.
 
 ```Python
-client.send("Message content to send", SomeContact) # or contact=SomeContact
+client.send("Message content to send", some_contact) # or contact=some_contact
 client.send("Message content to send", name="Name")
 client.send("Message content to send", number="5551234567")
 ```
@@ -64,7 +64,8 @@ In this mode, Shawk will poll the IMAP server periodically and check for new mes
 To do this, create your client with the `auto=True` parameter, or [see the docs](https://shawk.readthedocs.io/en/latest/Client.html#shawk.Client.Client.setup_inbox) for other methods.
 
 ```Python
-client = Shawk.Client('username@gmail.com', 'password', auto=True)
+client = Shawk.Client('username@gmail.com', 'password')
+client.setup_inbox('password', auto=True)
 ```
 
 You can also change how frequently the server is queried:
@@ -74,16 +75,17 @@ client.set_refresh_interval(30) # Period time in seconds
 ```
 
 Each time Shawk encounters a new message, it will pass its Message object to the handler function.
-You can define the behavior here with `client.set_handler(some_function)` where `some_function` accepts a Message object.
+You can define new behaviors by creating functions with the `@client.text_handler(regex, flags)` or `@client.contact_handler(contact)` decorators.
 
-For example:
+This allows you to define certain behaviors based on who texted you or what was in the message without complicating your actual behavior logic.
+
+For a small example:
 
 ```Python
 @client.text_handler()
 def handler(client, msg):
     print("Hey, we're popular! {} texted us!".format(msg.sender))
-    if isinstance(msg.sender, str):                      # if msg.sender is a string
-        client.send("Hello, world!", address=msg.sender) # then msg.sender is an address
-    else:
-        client.send("Hello, world!", msg.sender)         # then msg.sender is a Contact
+    client.send("Hello, world!", msg.sender)
 ```
+
+You can define more complicated text_handlers and contact_handlers, but we'll save that for the docs.

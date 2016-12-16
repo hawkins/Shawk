@@ -36,6 +36,7 @@ class Client(object):
         self.refresh_interval = 0 # Time in seconds
         self.auto_refresh_enabled = False
         self.text_handlers = {}
+        self.contact_handlers = {}
         self.default_text_handler = lambda x: print('Shawk received message: %s' % x)
 
         # Configure SMTP
@@ -66,24 +67,17 @@ class Client(object):
         """
         Create a new Contact instance and add to contacts.
 
-        You can also pass a list of numbers, carriers, and names to create multiple at once.
+        Returns the created Contact instance.
         """
-        # If the two are lists, add each to the contacts
-        if isinstance(number, list) and isinstance(carrier, list):
-            # Ensure name is also list
-            if name and not isinstance(name, list):
-                raise Exception("Not enough names")
 
-            if name:
-                self.contacts.update({str(nu): Contact(nu, ca, na) for (nu, ca, na) in (number, carrier, name)})
-            else:
-                self.contacts.update({str(nu): Contact(nu, ca) for (nu, ca) in (number, carrier)})
-
-        # Add the number and carrier to contacts if single pair is provided
+        # Add the number and carrier to contacts
         if name:
             self.contacts.update({str(number): Contact(number, carrier, name)})
         else:
             self.contacts.update({str(number): Contact(number, carrier)})
+
+        # Return the Contact
+        return self.contacts[str(number)]
 
     def remove_contact(self, contact=None, number=None, name=None):
         """Remove a contact from contacts"""
@@ -107,6 +101,10 @@ class Client(object):
         # Raise exception if number not found
         if not number:
             raise Exception("No matching contact found")
+
+        # Remove any contact_handlers for this Contact
+        if self.contacts[str(number)] in self.contact_handlers.keys():
+            del self.contact_handlers[self.contacts[str(number)]]
 
         # Delete the object from contacts
         del self.contacts[str(number)]
@@ -228,7 +226,7 @@ class Client(object):
         """
         Refresh the inbox only once
 
-        Optionally enable logging with `verbose=True`
+        Optionally log with `verbose=True`
         """
 
         # Get raw messages from imap
@@ -276,21 +274,42 @@ class Client(object):
 
         # Handle the new texts
         for msg in self.latest_messages:
-            matched = False
+            # Keep track of whether a specific handler has matched this text or not
+            matched_handler = False
+
+            # Consider contact handlers first
+
+            # Ensure we have a contact
+            if isinstance(msg.sender, Contact):
+                # If specific handlers did exist for this contact
+                if msg.sender in self.contact_handlers.keys():
+                    # If there is a handler attached
+                    if len(self.contact_handlers[msg.sender]) > 0:
+                        matched_handler = True
+
+                    # Call all of its functions
+                    for func in self.contact_handlers[msg.sender]:
+                        func(self, msg)
+
+            # Now consider text handlers
 
             # For each regex and function in text_handlers
-            for regex, func in self.text_handlers.items():
-
+            for regex, functions in self.text_handlers.items():
                 # Execute regex on the text
                 match = regex.match(msg.text)
 
-                # If a match occurred, call the function
+                # If a match occurred, call the functions attached to it
                 if match:
-                    matched = True
-                    func(self, msg, match)
+                    # If there are still any functions attached
+                    if len(functions) > 0:
+                        matched_handler = True
 
-            # If we did not match any specific regex
-            if not matched:
+                    # Call all of them
+                    for func in functions:
+                        func(self, msg, match, regex)
+
+            # If we did not match any specific handler
+            if not matched_handler:
 
                 # Execute default text handler
                 self.default_text_handler(self, msg)
@@ -319,34 +338,28 @@ class Client(object):
         Sets the default text handler if no string is provided.
         """
 
-        # Collect modifiers
-        modifiers = modifiers.lower()
-        flags = None
-        if 's' in modifiers:
-            flags = re.DOTALL     if not flags else flags | re.DOTALL
-        if 'i' in modifiers:
-            flags = re.IGNORECASE if not flags else flags | re.IGNORECASE
-        if 'm' in modifiers:
-            flags = re.MULTILINE  if not flags else flags | re.MULTILINE
-        if 'l' in modifiers:
-            flags = re.LOCALE     if not flags else flags | re.LOCALE
-        if 'u' in modifiers:
-            flags = re.UNICODE    if not flags else flags | re.UNICODE
-        if 'x' in modifiers:
-            flags = re.VERBOSE    if not flags else flags | re.VERBOSE
+        if pattern:
+            # Collect modifiers
+            modifiers = modifiers.lower()
+            flags = 0
+            if 's' in modifiers:
+                flags = re.DOTALL     if not flags else flags | re.DOTALL
+            if 'i' in modifiers:
+                flags = re.IGNORECASE if not flags else flags | re.IGNORECASE
+            if 'm' in modifiers:
+                flags = re.MULTILINE  if not flags else flags | re.MULTILINE
+            if 'l' in modifiers:
+                flags = re.LOCALE     if not flags else flags | re.LOCALE
+            if 'u' in modifiers:
+                flags = re.UNICODE    if not flags else flags | re.UNICODE
+            if 'x' in modifiers:
+                flags = re.VERBOSE    if not flags else flags | re.VERBOSE
 
-        # Compile the regular expression
-        try:
-            if flags:
+            # Compile the regular expression
+            try:
                 text_regex = re.compile(pattern, flags)
-            else:
-                text_regex = re.compile(pattern)
-        except Exception as e:
-            # If text was provided
-            if pattern:
+            except Exception as e:
                 raise Exception("An error occured while compiling regex: ", e)
-            else:
-                pass
 
         def decorator(func):
             """Closure that receives function"""
@@ -355,13 +368,65 @@ class Client(object):
             if not pattern:
                 self.default_text_handler = func
             else:
-                self.text_handlers[text_regex] = func
+                # Add to text_handlers
+                self.add_text_handler(text_regex, func)
 
             # Return unmodified function
             return func
 
         # Return decorator
         return decorator
+
+    def contact_handler(self, contact):
+        """
+        Define a decorator that accepts a shawk.Contact object to define contact_handler.
+
+        Sets the default text handler if no string is provided.
+        """
+
+        def decorator(func):
+            """Closure that receives function"""
+
+            # Add to contact_handlers
+            self.add_contact_handler(contact, func)
+
+            # Return unmodified function
+            return func
+
+        # Return decorator
+        return decorator
+
+    def add_text_handler(self, regex, handler):
+        """Associate a given handler to the given compiled regex"""
+
+        # Add to existing list or initialize list
+        if regex in self.text_handlers.keys():
+            self.text_handlers[regex].append(handler)
+        else:
+            self.text_handlers[regex] = [handler]
+
+    def remove_text_handler(self, regex, handler):
+        """Removes a given handler from the given compiled regex"""
+
+        # If this regex has a handler
+        if regex in self.text_handlers.keys():
+            self.text_handlers[regex].remove(handler)
+
+    def add_contact_handler(self, contact, handler):
+        """Associate a given handler to the contact"""
+
+        # Add to existing list or initialize list
+        if contact in self.contact_handlers.keys():
+            self.contact_handlers[contact].append(handler)
+        else:
+            self.contact_handlers[contact] = [handler]
+
+    def remove_contact_handler(self, contact, handler):
+        """Removes a given handler given its contact"""
+
+        # If this contact has a contact_handler
+        if contact in self.contact_handlers.keys():
+            self.contact_handlers[contact].remove(handler)
 
     def export_contacts(self, path):
         """Export the current contacts to a Shawk CSV file"""
@@ -373,29 +438,28 @@ class Client(object):
             writer.writerow(['Shawk contacts file', 'v', '0.4'])
             # Add each contact's information
             for _, contact in self.contacts.items():
-                print(contact)
                 writer.writerow([contact.get_number(), contact.get_carrier(), contact.get_name()])
 
     def import_contacts(self, path):
         """Import contacts from a Shawk CSV file"""
 
+        # In the future, we'll depend on csv_version to handle differences in file format
         csv_version = ''
 
         # Open path to read
         with open(path, 'r') as incsv:
             reader = csv.reader(incsv, delimiter=',', quotechar='|')
+            first_row = next(reader)
+            if first_row[0] == 'Shawk contacts file' and first_row[1] == 'v':
+                csv_version = first_row[2]
             for row in reader:
-                # If this is the first row
-                if row[0] == 'Shawk contacts file' and row[1] == 'v':
-                    csv_version = row[2]
-                else:
-                    self.contacts[row[0]] = Contact(number=row[0], carrier=row[1], name=row[2])
+                self.contacts[row[0]] = Contact(number=row[0], carrier=row[1], name=row[2])
 
     def print_contacts(self):
         """Print the contacts"""
 
-        for _, c in self.contacts.items():
-            print(c)
+        for _, contact in self.contacts.items():
+            print(contact)
 
     def __sendmail(self, address, message):
         """Send the content of message to address"""

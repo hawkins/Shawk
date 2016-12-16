@@ -1,6 +1,6 @@
 .pypirc
 SECURE.txt
-test.py
+test*.py
 client_secret.json
 *.pyc
 quickstart.py
@@ -8,3 +8,4 @@ dist
 built_docs
 build_docs.sh
 *.csv
+commitnotes

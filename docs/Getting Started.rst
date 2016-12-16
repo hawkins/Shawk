@@ -166,13 +166,28 @@ So, you can define your own behavior as follows:
 
     # Or with a regex
     @client.text_handler('^Print (.*)', 'i') # Starts with "print" (case insensitive because of 'i' flag), matches text following.
-    def print_dot_z(client, msg, match):
+    def print_dot_z(client, msg, match, regex):
         print(match.group(1))
 
 Naturally, you'll do something a bit more meaningful in your handler functions.
 But since they're just simple python functions, you've got free reign to interface with your scripts however you like.
 
+Note that you can also create handlers that activate on Contacts instead of Regex.
+This is useful if you only want behavior to apply to a specific contact and consider text second, instead of the other way around.
 
+You can do this like so:
+
+.. code-block:: python
+
+    josh_contact = client.add_contact(1234567890, 'Verizon', Josh)
+
+    @client.contact_handler(josh_contact)
+    def josh_handler(client, msg):
+        print("This func only called if Josh texted us")
+
+Also worth mentioning is that these are just normal functions, so you can define handlers that hook onto contacts within other handlers.
+I.e., a text_handler that when called will instantiate a contact_handler to continue the conversation with that specific contact after they reply.
+This is advanced behavior tho - so we we'll cover that in another guide.
 
 I hope you've found that Shawk is pretty easy to use, yet very powerful, since it allows your users to provide input and receive output via SMS, for free.
 
