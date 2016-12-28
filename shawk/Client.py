@@ -20,7 +20,7 @@ from shawk import SMS_Address_Regex, sms_to_mail
 class Client(object):
     """Client is the main Shawk interface"""
 
-    def __init__(self, user, pwd):
+    def __init__(self, user, password):
         """
         Initialize the client and configure SMTP for sending messages.
 
@@ -37,12 +37,10 @@ class Client(object):
         self.auto_refresh_enabled = False
         self.text_handlers = {}
         self.contact_handlers = {}
-        self.default_text_handler = lambda x: print('Shawk received message: %s' % x)
+        self.set_default_text_handler(lambda x, y: print('Shawk received message: %s' % y))
 
         # Configure SMTP
-        self.smtp = smtplib.SMTP("smtp.gmail.com", 587)
-        self.smtp.starttls()
-        self.smtp.login(str(user), str(pwd))
+        self.setup_outbox("smtp.gmail.com", 587, user, password)
 
     def __repr__(self):
         """Return the object representation of the Client"""
@@ -147,6 +145,13 @@ class Client(object):
         # Move uid to folder
         self.imap.copy(uid, self.processed_label)
         self.imap.delete_messages(uid)
+
+    def setup_outbox(self, host, port, user, password):
+        """Configure an SMTP connection for sending SMS"""
+
+        self.smtp = smtplib.SMTP(host, port)
+        self.smtp.starttls()
+        self.smtp.login(str(user), str(password))
 
     def setup_inbox(self, password, user=None, folder='INBOX', refresh=False, auto=False, ssl=True):
         """
@@ -366,7 +371,7 @@ class Client(object):
 
             # Set the default text handler if no regex is provided
             if not pattern:
-                self.default_text_handler = func
+                self.set_default_text_handler(func)
             else:
                 # Add to text_handlers
                 self.add_text_handler(text_regex, func)
@@ -395,6 +400,11 @@ class Client(object):
 
         # Return decorator
         return decorator
+
+    def set_default_text_handler(self, handler):
+        """Set the default text handler to the given handler function"""
+
+        self.default_text_handler = handler
 
     def add_text_handler(self, regex, handler):
         """Associate a given handler to the given compiled regex"""

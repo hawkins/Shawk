@@ -1,18 +1,14 @@
 
 # Import shawk
-import shawk
+from shawk import Message, Contact
 
 # Prepare contacts used throughout tests
-name_contact = shawk.Contact(12345678, 'Verizon', 'Somebody')
+name_contact = Contact(12345678, 'Verizon', 'Somebody')
 
 # Prepare messages
-mini_message = shawk.Message('Text', name_contact)
-date_message = shawk.Message('Text', name_contact, '2016-12-22 21:54:57')
-date_message_clone = shawk.Message('Text', name_contact, '2016-12-22 21:54:57')
-
-
-""" BEGIN TESTS """
-
+mini_message = Message('Text', name_contact)
+date_message = Message('Text', name_contact, '2016-12-22 21:54:57')
+date_message_clone = Message('Text', name_contact, '2016-12-22 21:54:57')
 
 def test_repr_minimal():
     assert(repr(mini_message) == "<shawk.Message('Text', 'Somebody: 12345678 (Verizon)')>")
@@ -31,4 +27,3 @@ def test_not_eq():
 
 def test_eq():
     assert(date_message == date_message_clone)
-
