@@ -10,3 +10,6 @@ built_docs
 build_docs.sh
 *.csv
 commitnotes
+.cache
+secure
+shawk.egg-info

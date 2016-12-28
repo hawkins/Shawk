@@ -1,7 +1,7 @@
 # <img src="https://raw.githubusercontent.com/hawkins/shawk/master/shawk.png" width="64" height="64"</img> Shawk - Free SMS with Python using SMTP and IMAP
 
-A python `smtplib` and `imapclient` wrapper to send and receive SMS messages through SMS gateways with a Gmail login.
-Perfect for Internet of Things projects that use a Raspberry Pi to text you!
+A Python `smtplib` and `imapclient` wrapper to send and receive SMS messages through SMS gateways with a Gmail login.
+Perfect for Internet of Things projects that use a Raspberry Pi to text you.
 
 
 ##### Disclaimer
@@ -14,12 +14,29 @@ Perfect for Internet of Things projects that use a Raspberry Pi to text you!
 Shawk is available on PyPi as such:
 
 ```
-pip install shawk
+pip install -U shawk
 ```
+
 
 # Documentation
 
 To see full documentation and a more detailed Getting Started page, [see here](https://shawk.readthedocs.io/en/latest/Getting%20Started.html).
+
+
+# Contributing
+
+I welcome all sorts of contributions - code, docs, tests, bugs, etc.
+If you'd like to contribute code, please make sure your tests continue to pass after making your changes.
+Additionally, if your new code requires any testing, please write your tests in the appropriate file.
+
+
+## Testing
+
+Tests can be run with Pytest.
+
+1. Run `pip install -U pytest` to install pytest
+2. Locally install this Shawk package with `pip install -e .`
+3. Then simply run `pytest` in the root directory to execute tests
 
 
 # Simple Usage Example
