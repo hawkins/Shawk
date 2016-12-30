@@ -101,12 +101,9 @@ We can get the new ones manually by first setting up our inbox and refreshing it
 .. code-block:: python
 
     client.setup_inbox(password) # We don't save your password, so send it again
-    client.refresh_inbox()
+    client.refresh()
 
-    # or...
-    client.setup_inbox(password, refresh=True)
-
-This will handle the IMAP server connection for retrieving new messages to your Gmail account.
+This will handle establishing the IMAP server connection for retrieving new messages to your Gmail account and manually retrieving the messages afterwards.
 
 You can actually use a distinct Gmail account from the one you use to send messages by passing a user: string, but we won't focus on that for this simple tutorial.
 As always, read the rest of the docs if you'd like to know more about that.

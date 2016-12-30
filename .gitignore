@@ -1,6 +1,7 @@
 .pypirc
 SECURE.txt
-test*.py
+test.py
+test_advanced.py
 client_secret.json
 *.pyc
 quickstart.py
@@ -9,3 +10,6 @@ built_docs
 build_docs.sh
 *.csv
 commitnotes
+.cache
+secure
+shawk.egg-info
