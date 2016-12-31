@@ -22,7 +22,7 @@ from shawk import SMS_Address_Regex, sms_to_mail
 class Client(object):
     """Client is the main Shawk interface"""
 
-    def __init__(self, user, password, emojize=True, demojize=True):
+    def __init__(self, user, password):
         """
         Initialize the client and configure SMTP for sending messages.
 
@@ -39,8 +39,8 @@ class Client(object):
         self.auto_refresh_enabled = False
         self.text_handlers = {}
         self.contact_handlers = {}
-        self.emojize = emojize
-        self.demojize = demojize
+        self.emojize = True
+        self.demojize = True
 
         # Configure SMTP
         self.setup_outbox("smtp.gmail.com", 587, user, password)
@@ -63,6 +63,26 @@ class Client(object):
             self.imap.logout()
         except AttributeError:
             pass
+
+    def enable_emojize(self):
+        """Enable translating text to emojis when sending messages"""
+
+        self.emojize = True
+
+    def disable_emojize(self):
+        """Disable translating text to emojis when sending messages"""
+
+        self.emojize = False
+
+    def enable_demojize(self):
+        """Enable translating emojis to text when receiving messages"""
+
+        self.demojize = True
+
+    def disable_demojize(self):
+        """Disable translating text to emojis when receiving messages"""
+
+        self.demojize = False
 
     def add_contact(self, number, carrier, name=None):
         """

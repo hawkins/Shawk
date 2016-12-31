@@ -402,7 +402,7 @@ def test_removing_contact_handler(mock_IMAP, mock_SMTP):
 def test_sending_emoji_message(mock_SMTP):
     """Test sending a message with emoji"""
 
-    client = shawk.Client(username, password, emojize=True)
+    client = shawk.Client(username, password)
     contact = client.add_contact(number=1234567890, carrier='Verizon', name='Somebody')
     smtp_instance = mock_SMTP.return_value
     address = contact.get_address()
@@ -417,7 +417,8 @@ def test_sending_emoji_message(mock_SMTP):
 def test_sending_message_without_translating_emoji(mock_SMTP):
     """Test sending a message with emoji code but without emojizing it"""
 
-    client = shawk.Client(username, password, emojize=False)
+    client = shawk.Client(username, password)
+    client.disable_emojize()
     contact = client.add_contact(number=1234567890, carrier='Verizon', name='Somebody')
     smtp_instance = mock_SMTP.return_value
     address = contact.get_address()
@@ -433,7 +434,8 @@ def test_sending_message_without_translating_emoji(mock_SMTP):
 def test_receiving_emoji_message(mock_IMAP, mock_SMTP):
     """Test receiving a message with emoji"""
 
-    client = shawk.Client(username, password, demojize=False)
+    client = shawk.Client(username, password)
+    client.disable_demojize()
     client.setup_inbox(password)
     spoof_contact = client.add_contact(number=1234567890, carrier='Verizon', name='Spoof')
     spoof_phone = SpoofPhone(client.imap, spoof_contact)
@@ -452,7 +454,7 @@ def test_receiving_emoji_message(mock_IMAP, mock_SMTP):
 def test_receiving_emoji_message_demojized(mock_IMAP, mock_SMTP):
     """Test receiving a message with emoji translated back to text"""
 
-    client = shawk.Client(username, password, demojize=True)
+    client = shawk.Client(username, password)
     client.setup_inbox(password)
     spoof_contact = client.add_contact(number=1234567890, carrier='Verizon', name='Spoof')
     spoof_phone = SpoofPhone(client.imap, spoof_contact)
