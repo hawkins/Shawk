@@ -414,6 +414,22 @@ def test_sending_emoji_message(mock_SMTP):
     assert(smtp_instance.sendmail.mock_calls == [call('0', address, emoji.emojize(message))])
 
 @patch('smtplib.SMTP')
+def test_sending_emoji_message_via_send_emojize(mock_SMTP):
+    """Test sending a message with emoji by passing emojize=True to send"""
+
+    client = shawk.Client(username, password)
+    client.disable_emojize()
+    contact = client.add_contact(number=1234567890, carrier='Verizon', name='Somebody')
+    smtp_instance = mock_SMTP.return_value
+    address = contact.get_address()
+    message = 'Testing :thumbs_up_sign:'
+
+    client.send(message, contact=contact, emojize=True)
+
+    assert(smtp_instance.sendmail.call_count == 1)
+    assert(smtp_instance.sendmail.mock_calls == [call('0', address, emoji.emojize(message))])
+
+@patch('smtplib.SMTP')
 def test_sending_message_without_translating_emoji(mock_SMTP):
     """Test sending a message with emoji code but without emojizing it"""
 

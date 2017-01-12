@@ -513,16 +513,23 @@ class Client(object):
         for _, contact in self.contacts.items():
             print(contact)
 
-    def __sendmail(self, address, text):
+    def __sendmail(self, address, text, emojize=None):
         """Send the content of message to address"""
 
-        if self.emojize:
-            text = emoji.emojize(text, use_aliases=True)
+        # Check if emojize was specified
+        if emojize is not None:
+            # If so, follow its rule
+            if emojize:
+                text = emoji.emojize(text, use_aliases=True)
+        else:
+            # Otherwise, follow client rule
+            if self.emojize:
+                text = emoji.emojize(text, use_aliases=True)
 
         return self.smtp.sendmail('0', address, text)
 
 
-    def send(self, message, contact=None, address=None, number=None, name=None, carrier=None):
+    def send(self, message, contact=None, address=None, number=None, name=None, carrier=None, emojize=None):
         """
         Send a message.
 
@@ -544,9 +551,9 @@ class Client(object):
 
         # Send message to recipient
         if address:
-            return self.__sendmail(address, message)
+            return self.__sendmail(address, message, emojize=emojize)
         if contact:
-            return self.__sendmail(contact.get_address(), message)
+            return self.__sendmail(contact.get_address(), message, emojize=emojize)
 
         # Address is not readily available, determine from other inputs
 
@@ -557,7 +564,7 @@ class Client(object):
             # Get address of recipient
             try:
                 address = self.contacts[number].get_address()
-                return self.__sendmail(address, message)
+                return self.__sendmail(address, message, emojize=emojize)
             except KeyError:
                 # Number not in contacts
                 if not carrier:
@@ -567,7 +574,7 @@ class Client(object):
                     # Build address
                     address = sms_to_mail(number, carrier)
                     # Send the message
-                    return self.__sendmail(address, message)
+                    return self.__sendmail(address, message, emojize=emojize)
 
         # Find address if only given name
         if name and not address:
@@ -577,7 +584,7 @@ class Client(object):
                     address = each.get_address()
 
                     # Send the message
-                    return self.__sendmail(address, message)
+                    return self.__sendmail(address, message, emojize=emojize)
 
             if not number:
                 # Name was not found in contacts
