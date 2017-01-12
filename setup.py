@@ -12,5 +12,6 @@ setup(
     classifiers = [],
     install_requires=[
         'imapclient>=1.0.2',
+        'emoji>=0.3.9',
     ],
 )

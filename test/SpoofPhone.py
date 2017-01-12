@@ -1,6 +1,7 @@
 
 from datetime import datetime
 from collections import defaultdict
+import emoji
 
 class SpoofPhone():
     """This class provides methods to spoof tools to spoof SMS messages to a Shawk client"""
@@ -9,7 +10,7 @@ class SpoofPhone():
         self.imap = mock_IMAP_instance
         self.sender = sender
 
-    def send(self, messages, time=None, sender=None):
+    def send(self, messages, time=None, sender=None, emojize=False):
         """Spoof a simple SMS"""
 
         # Handle arguments
@@ -19,6 +20,8 @@ class SpoofPhone():
             sender = self.sender
         if not isinstance(messages, list):
             messages = [messages]
+        if emojize:
+            messages = [emoji.emojize(message, use_aliases=True) for message in messages]
 
         # Spoof IMAP's fetch return value
         self.imap.fetch.return_value = defaultdict(dict)

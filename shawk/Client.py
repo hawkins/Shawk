@@ -8,11 +8,13 @@ Define the Client interface in Shawk.
 from __future__ import print_function
 from threading import Thread
 from time import sleep
-import email
-import csv
 import re
+import csv
+import email
+import emoji
 import smtplib
 import imapclient
+
 from shawk.Contact import Contact
 from shawk.Message import Message
 from shawk import SMS_Address_Regex, sms_to_mail
@@ -37,7 +39,8 @@ class Client(object):
         self.auto_refresh_enabled = False
         self.text_handlers = {}
         self.contact_handlers = {}
-        self.set_default_text_handler(lambda x, y: print('Shawk received message: %s' % y))
+        self.emojize = True
+        self.demojize = True
 
         # Configure SMTP
         self.setup_outbox("smtp.gmail.com", 587, user, password)
@@ -60,6 +63,26 @@ class Client(object):
             self.imap.logout()
         except AttributeError:
             pass
+
+    def enable_emojize(self):
+        """Enable translating text to emojis when sending messages"""
+
+        self.emojize = True
+
+    def disable_emojize(self):
+        """Disable translating text to emojis when sending messages"""
+
+        self.emojize = False
+
+    def enable_demojize(self):
+        """Enable translating emojis to text when receiving messages"""
+
+        self.demojize = True
+
+    def disable_demojize(self):
+        """Disable translating text to emojis when receiving messages"""
+
+        self.demojize = False
 
     def add_contact(self, number, carrier, name=None):
         """
@@ -265,7 +288,10 @@ class Client(object):
 
                 # Create Message object
                 contact = self.get_contact_from_address(msg['FROM'])
-                new_msg = Message(msg['BODY'], (contact or msg['FROM']), msg['INTERNALDATE'])
+                if self.demojize:
+                    new_msg = Message(emoji.demojize(msg['BODY']), (contact or msg['FROM']), msg['INTERNALDATE'])
+                else:
+                    new_msg = Message(msg['BODY'], (contact or msg['FROM']), msg['INTERNALDATE'])
 
                 # Track message uid
                 new_msg.uid = msg['UID']
@@ -335,6 +361,22 @@ class Client(object):
         """Return the refresh interval for auto refresh"""
 
         return self.refresh_interval
+
+    def default_text_handler(self, client, message):
+        """
+        This is the default text handler provided by Shawk.
+
+        If self.demojize is True, this converts emoji to text and prints the message.
+        Otherwise, this simply prints the raw message text.
+        """
+
+        greeting = "Shawk received message"
+
+        if self.demojize:
+            demojized_text = emoji.demojize(message.text)
+            print("{}: {}".format(greeting, demojized_text))
+        else:
+            print("{}: {}".format(greeting, message.text))
 
     def text_handler(self, pattern=None, modifiers=''):
         """
@@ -471,12 +513,23 @@ class Client(object):
         for _, contact in self.contacts.items():
             print(contact)
 
-    def __sendmail(self, address, message):
+    def __sendmail(self, address, text, emojize=None):
         """Send the content of message to address"""
 
-        return self.smtp.sendmail('0', address, message)
+        # Check if emojize was specified
+        if emojize is not None:
+            # If so, follow its rule
+            if emojize:
+                text = emoji.emojize(text, use_aliases=True)
+        else:
+            # Otherwise, follow client rule
+            if self.emojize:
+                text = emoji.emojize(text, use_aliases=True)
 
-    def send(self, message, contact=None, address=None, number=None, name=None, carrier=None):
+        return self.smtp.sendmail('0', address, text)
+
+
+    def send(self, message, contact=None, address=None, number=None, name=None, carrier=None, emojize=None):
         """
         Send a message.
 
@@ -498,9 +551,9 @@ class Client(object):
 
         # Send message to recipient
         if address:
-            return self.__sendmail(address, message)
+            return self.__sendmail(address, message, emojize=emojize)
         if contact:
-            return self.__sendmail(contact.get_address(), message)
+            return self.__sendmail(contact.get_address(), message, emojize=emojize)
 
         # Address is not readily available, determine from other inputs
 
@@ -511,7 +564,7 @@ class Client(object):
             # Get address of recipient
             try:
                 address = self.contacts[number].get_address()
-                return self.__sendmail(address, message)
+                return self.__sendmail(address, message, emojize=emojize)
             except KeyError:
                 # Number not in contacts
                 if not carrier:
@@ -521,7 +574,7 @@ class Client(object):
                     # Build address
                     address = sms_to_mail(number, carrier)
                     # Send the message
-                    return self.__sendmail(address, message)
+                    return self.__sendmail(address, message, emojize=emojize)
 
         # Find address if only given name
         if name and not address:
@@ -531,7 +584,7 @@ class Client(object):
                     address = each.get_address()
 
                     # Send the message
-                    return self.__sendmail(address, message)
+                    return self.__sendmail(address, message, emojize=emojize)
 
             if not number:
                 # Name was not found in contacts

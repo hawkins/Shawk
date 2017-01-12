@@ -19,6 +19,7 @@ Module Index
 
    Getting Started
    Configuring Gmail
+   Using Emoji
    Client
    Contact
    Message
